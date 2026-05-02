@@ -4,6 +4,10 @@ import numpy as np
 import joblib
 import matplotlib.pyplot as plt
 from datetime import date
+import os
+if not os.path.exists('models/best_model.pkl'):
+    from setup import train_and_save
+    train_and_save()
 
 st.set_page_config(page_title="CTA Load Predictor", layout="wide")
 
