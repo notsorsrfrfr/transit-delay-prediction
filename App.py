@@ -3,24 +3,21 @@ import pandas as pd
 import numpy as np
 import joblib
 import matplotlib.pyplot as plt
-from Setup import train_and_save
 from datetime import date
 import os
-if not os.path.exists('models/best_model.pkl'):
-    from setup import train_and_save
-    train_and_save()
 
-st.set_page_config(page_title="CTA Load Predictor", layout="wide")
+if not os.path.exists('models/best_model.pkl'):
+    from Setup import train_and_save
+    with st.spinner('Setting up model for first time... this takes 5-10 minutes'):
+        train_and_save()
+
+st.set_page_config(page_title="CTA Load Predictor", page_icon="🚌", layout="wide")
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-    
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-    }
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     .block-container { padding: 2rem 3rem; }
-    
     .top-bar {
         background: #1a1a2e;
         border-radius: 16px;
@@ -28,18 +25,8 @@ st.markdown("""
         margin-bottom: 24px;
         border-left: 5px solid #e94560;
     }
-    .top-bar h1 {
-        color: #ffffff;
-        font-size: 28px;
-        font-weight: 600;
-        margin: 0 0 6px 0;
-    }
-    .top-bar p {
-        color: #a0a0b0;
-        font-size: 14px;
-        margin: 0;
-    }
-    
+    .top-bar h1 { color: #ffffff; font-size: 28px; font-weight: 600; margin: 0 0 6px 0; }
+    .top-bar p { color: #a0a0b0; font-size: 14px; margin: 0; }
     .stat-box {
         background: #16213e;
         border-radius: 12px;
@@ -47,73 +34,36 @@ st.markdown("""
         border: 1px solid #0f3460;
         text-align: center;
     }
-    .stat-box .val {
-        font-size: 22px;
-        font-weight: 600;
-        color: #e94560;
-        margin: 0;
-    }
-    .stat-box .lbl {
-        font-size: 12px;
-        color: #a0a0b0;
-        margin: 4px 0 0 0;
-    }
-    
+    .stat-box .val { font-size: 22px; font-weight: 600; color: #e94560; margin: 0; }
+    .stat-box .lbl { font-size: 12px; color: #a0a0b0; margin: 4px 0 0 0; }
     .section-title {
-        font-size: 13px;
-        font-weight: 600;
-        color: #a0a0b0;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-bottom: 12px;
+        font-size: 13px; font-weight: 600; color: #a0a0b0;
+        text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;
     }
-    
     .result-high {
-        background: #2d1b1b;
-        border: 1px solid #e94560;
-        border-left: 4px solid #e94560;
-        border-radius: 10px;
-        padding: 16px 20px;
-        margin-top: 16px;
+        background: #2d1b1b; border: 1px solid #e94560;
+        border-left: 4px solid #e94560; border-radius: 10px; padding: 16px 20px; margin-top: 16px;
     }
     .result-normal {
-        background: #1b2d1f;
-        border: 1px solid #2ecc71;
-        border-left: 4px solid #2ecc71;
-        border-radius: 10px;
-        padding: 16px 20px;
-        margin-top: 16px;
+        background: #1b2d1f; border: 1px solid #2ecc71;
+        border-left: 4px solid #2ecc71; border-radius: 10px; padding: 16px 20px; margin-top: 16px;
     }
     .result-high h3 { color: #e94560; margin: 0 0 4px 0; font-size: 18px; }
     .result-normal h3 { color: #2ecc71; margin: 0 0 4px 0; font-size: 18px; }
     .result-high p, .result-normal p { color: #a0a0b0; margin: 0; font-size: 13px; }
-    
     .tag {
-        display: inline-block;
-        background: #0f3460;
-        color: #a0c4ff;
-        border-radius: 20px;
-        padding: 3px 12px;
-        font-size: 12px;
-        margin: 3px 3px 3px 0;
+        display: inline-block; background: #0f3460; color: #a0c4ff;
+        border-radius: 20px; padding: 3px 12px; font-size: 12px; margin: 3px 3px 3px 0;
     }
-    
     div[data-testid="stButton"] button {
-        background: #e94560 !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-        padding: 10px !important;
-        font-size: 15px !important;
+        background: #e94560 !important; color: white !important;
+        border: none !important; border-radius: 8px !important;
+        font-weight: 600 !important; padding: 10px !important; font-size: 15px !important;
     }
-    div[data-testid="stButton"] button:hover {
-        background: #c73652 !important;
-    }
+    div[data-testid="stButton"] button:hover { background: #c73652 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# header
 st.markdown("""
 <div class="top-bar">
     <h1>🚌 Chicago Transit Load Predictor</h1>
@@ -121,7 +71,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# stats row
 c1, c2, c3, c4 = st.columns(4)
 with c1:
     st.markdown('<div class="stat-box"><p class="val">87%</p><p class="lbl">Model Accuracy</p></div>', unsafe_allow_html=True)
@@ -134,7 +83,6 @@ with c4:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# load model and data
 @st.cache_resource
 def load_model():
     return joblib.load('models/best_model.pkl')
@@ -148,7 +96,6 @@ def load_data():
 model = load_model()
 df_data = load_data()
 
-# main layout
 left, right = st.columns([1, 1.4], gap="large")
 
 with left:
@@ -172,7 +119,6 @@ with left:
     st.markdown("<br>", unsafe_allow_html=True)
     predict_btn = st.button("Predict Load →", use_container_width=True)
 
-    # tags
     month = selected_date.month
     day_of_week = selected_date.weekday()
     is_weekend = day_of_week >= 5
@@ -203,19 +149,15 @@ with right:
         fig.patch.set_facecolor('#0e1117')
         ax.set_facecolor('#16213e')
         ax.plot(range(len(monthly)), monthly['rides'], color='#e94560', linewidth=2, zorder=3)
-        ax.fill_between(range(len(monthly)), monthly['rides'],
-                        alpha=0.15, color='#e94560', zorder=2)
-        ax.scatter(range(len(monthly)), monthly['rides'],
-                   color='#e94560', s=20, zorder=4)
+        ax.fill_between(range(len(monthly)), monthly['rides'], alpha=0.15, color='#e94560', zorder=2)
+        ax.scatter(range(len(monthly)), monthly['rides'], color='#e94560', s=20, zorder=4)
         step = max(1, len(monthly) // 8)
         ax.set_xticks(range(0, len(monthly), step))
-        ax.set_xticklabels(monthly['date'].iloc[::step],
-                           rotation=30, color='#a0a0b0', fontsize=8, ha='right')
+        ax.set_xticklabels(monthly['date'].iloc[::step], rotation=30, color='#a0a0b0', fontsize=8, ha='right')
         ax.tick_params(colors='#a0a0b0', length=0)
         for spine in ax.spines.values():
             spine.set_color('#0f3460')
         ax.set_ylabel('Avg Daily Rides', color='#a0a0b0', fontsize=9)
-        ax.yaxis.label.set_color('#a0a0b0')
         ax.grid(axis='y', color='#0f3460', linewidth=0.5, alpha=0.5)
         fig.tight_layout()
         st.pyplot(fig)
@@ -223,7 +165,6 @@ with right:
     else:
         st.info(f"No historical data found for route {route}.")
 
-    # prediction
     if predict_btn:
         day = selected_date.day
         is_rainy = 1 if prcp > 0 else 0
@@ -254,7 +195,7 @@ with right:
             st.markdown(f"""
             <div class="result-high">
                 <h3>🔴 High Load Expected</h3>
-                <p>This route is likely to be crowded on {selected_date.strftime('%B %d, %Y')}. 
+                <p>This route is likely to be crowded on {selected_date.strftime('%B %d, %Y')}.
                 Confidence: <strong style="color:#e94560">{confidence}%</strong></p>
             </div>
             """, unsafe_allow_html=True)
@@ -262,13 +203,11 @@ with right:
             st.markdown(f"""
             <div class="result-normal">
                 <h3>🟢 Normal Load Expected</h3>
-                <p>This route should operate normally on {selected_date.strftime('%B %d, %Y')}. 
+                <p>This route should operate normally on {selected_date.strftime('%B %d, %Y')}.
                 Confidence: <strong style="color:#2ecc71">{confidence}%</strong></p>
             </div>
             """, unsafe_allow_html=True)
 
-        # confidence bar
-        st.markdown("<br>", unsafe_allow_html=True)
         fig2, ax2 = plt.subplots(figsize=(9, 0.6))
         fig2.patch.set_facecolor('#0e1117')
         ax2.set_facecolor('#0e1117')
@@ -281,9 +220,8 @@ with right:
         ax2.tick_params(colors='#a0a0b0', length=0)
         for spine in ax2.spines.values():
             spine.set_visible(False)
-        ax2.text(confidence/2, 0, f'{confidence}%',
-                 ha='center', va='center', color='white',
-                 fontweight='600', fontsize=10)
+        ax2.text(confidence/2, 0, f'{confidence}%', ha='center', va='center',
+                 color='white', fontweight='600', fontsize=10)
         fig2.tight_layout()
         st.pyplot(fig2)
         plt.close()
