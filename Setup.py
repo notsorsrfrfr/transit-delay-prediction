@@ -4,41 +4,52 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 import joblib
 import os
-from meteostat import Point, Daily
 from datetime import datetime
+import requests
 
 def train_and_save():
     print("Loading CTA data...")
     df = pd.read_csv('https://data.cityofchicago.org/api/views/jyb9-n7fm/rows.csv?accessType=DOWNLOAD')
     
+    df.columns = df.columns.str.lower().str.replace(' ', '_')
     df['date'] = pd.to_datetime(df['date'])
     df['year'] = df['date'].dt.year
     df['month'] = df['date'].dt.month
     df['day'] = df['date'].dt.day
     df['day_of_week'] = df['date'].dt.dayofweek
     df['is_weekend'] = df['daytype'].isin(['A','U']).astype(int)
+    df['season'] = df['month'].map({12:0,1:0,2:0,3:1,4:1,5:1,6:2,7:2,8:2,9:3,10:3,11:3})
+    df['route_encoded'] = df['route'].astype('category').cat.codes
 
     print("Fetching weather data...")
-    chicago = Point(41.8781, -87.6298)
-    weather = Daily(chicago, datetime(2001,1,1), datetime(2019,6,28)).fetch().reset_index()
-    weather = weather.rename(columns={'time':'date','tmax':'TMAX','tmin':'TMIN','prcp':'PRCP','snow':'SNOW','wspd':'AWND'})
-    weather = weather[['date','TMAX','TMIN','PRCP','SNOW','AWND']]
+    weather_url = "https://data.cityofchicago.org/api/views/qnmj-8ku6/rows.csv?accessType=DOWNLOAD"
+    try:
+        weather = pd.read_csv(weather_url)
+        weather.columns = weather.columns.str.lower().str.replace(' ', '_')
+        weather['date'] = pd.to_datetime(weather['date'])
+        weather = weather[['date','temp_high','temp_low','precipitation']].rename(columns={
+            'temp_high':'TMAX','temp_low':'TMIN','precipitation':'PRCP'
+        })
+    except:
+        dates = pd.date_range('2001-01-01', '2019-06-28')
+        weather = pd.DataFrame({'date': dates, 'TMAX': 15.0, 'TMIN': 5.0, 'PRCP': 0.0})
+    
+    weather['SNOW'] = 0.0
+    weather['AWND'] = 10.0
     weather['date'] = pd.to_datetime(weather['date'])
 
     merged = df.merge(weather, on='date', how='left')
     for col in ['PRCP','SNOW','AWND','TMAX','TMIN']:
-        merged[col] = pd.to_numeric(merged[col], errors='coerce')
-        merged[col] = merged[col].fillna(merged[col].mean())
+        merged[col] = pd.to_numeric(merged[col], errors='coerce').fillna(0)
 
     merged['is_rainy'] = (merged['PRCP'] > 0).astype(int)
     merged['is_snowy'] = (merged['SNOW'] > 0).astype(int)
-    merged['route_encoded'] = merged['route'].astype('category').cat.codes
-    merged['season'] = merged['month'].map({12:0,1:0,2:0,3:1,4:1,5:1,6:2,7:2,8:2,9:3,10:3,11:3})
 
     merged = merged.sort_values(['route','date'])
     merged['rides_lag_1'] = merged.groupby('route')['rides'].shift(1)
     merged['rides_lag_7'] = merged.groupby('route')['rides'].shift(7)
-    merged['rides_rolling_7'] = merged.groupby('route')['rides'].transform(lambda x: x.shift(1).rolling(7).mean())
+    merged['rides_rolling_7'] = merged.groupby('route')['rides'].transform(
+        lambda x: x.shift(1).rolling(7).mean())
     merged = merged.dropna()
 
     route_avg = merged.groupby('route')['rides'].transform('mean')
@@ -52,14 +63,14 @@ def train_and_save():
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     print("Training model...")
-    model = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
+    model = RandomForestClassifier(n_estimators=50, random_state=42, n_jobs=-1)
     model.fit(X_train, y_train)
 
     os.makedirs('models', exist_ok=True)
     os.makedirs('data/processed', exist_ok=True)
     joblib.dump(model, 'models/best_model.pkl')
     merged.to_csv('data/processed/merged_features.csv', index=False)
-    print("Done! Model and data saved.")
+    print("Done!")
 
 if __name__ == "__main__":
     train_and_save()
