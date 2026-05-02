@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import joblib
 import matplotlib.pyplot as plt
+from Setup import train_and_save
 from datetime import date
 import os
 if not os.path.exists('models/best_model.pkl'):
